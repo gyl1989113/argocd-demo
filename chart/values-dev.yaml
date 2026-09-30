@@ -1,0 +1,6 @@
+replicaCount: 1
+image:
+  tag: v5.0
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: dev

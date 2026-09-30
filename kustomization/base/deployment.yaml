@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-boot-helloworld
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spring-boot-helloworld
+  template:
+    metadata:
+      labels:
+        app: spring-boot-helloworld
+    spec:
+      containers:
+        - name: spring-boot-helloworld
+          image: registry.cn-beijing.aliyuncs.com/wangxiaochun/spring-boot-helloworld:v1.0
+          imagePullPolicy: Always
+          ports:
+            - name: httpport
+              containerPort: 80

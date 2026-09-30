@@ -1,0 +1,88 @@
+pipeline {
+    agent any
+    environment {
+        codeRepo="http://gitlab.wang.org/devops/spring-boot-helloworld.git"
+        credential='gitlab-wang-password'    
+        harborServer='harbor.wang.org'
+        projectName='spring-boot-helloworld'
+        imageUrl="${harborServer}/example/${projectName}"
+        imageTag="${BUILD_ID}"
+    }
+    triggers {
+        gitlab(triggerOnPush: true,
+            acceptMergeRequestOnSuccess: true,
+            triggerOnMergeRequest: true,
+            branchFilterType: 'All',
+            addVoteOnMergeRequest: true,
+            secretToken: '62dad2cd1d9ae62686ada8dc4cdOae66')
+    }    
+    stages {
+        stage('Source') {
+            steps {
+                //git branch: 'main', credentialsId: "${credential}", url: "${codeRepo}"
+                echo "Clone Source"
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+        }        
+        stage("SonarQube Analysis") {
+            steps {
+                withSonarQubeEnv('sonarqube-server') {
+                    sh 'mvn sonar:sonar'
+                    //sh 'sonar-scanner'
+                    //sh 'mvn sonar:sonar -Dsonar.java.binaries=./'
+                }
+            }
+        }
+        stage("Quality Gate") {
+            steps {
+                timeout(time: 30, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }   
+        
+        stage('Build') {
+            steps {
+                //sh 'mvn -B -DskipTests clean package'
+                sh 'mvn -Dmaven.test.skip=true clean package'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker image build . -t "${imageUrl}:${imageTag}"'
+                // input(message: '镜像已经构建完成，是否要推送？')
+            }           
+        }
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'harbor-user-password', passwordVariable: 'harborPassword', usernameVariable: 'harborUserName')]) {
+                    sh "docker login -u ${env.harborUserName} -p ${env.harborPassword} ${harborServer}"
+                    sh "docker image push ${imageUrl}:${imageTag}"
+                }
+            }   
+        }
+        stage('Run Docker') {
+            steps {
+                sh 'ssh root@10.0.0.101 "docker rm -f ${projectName} && docker run --name ${projectName} -p 80:8888 -d ${imageUrl}:${imageTag}"'
+                sh 'ssh root@10.0.0.102 "docker rm -f ${projectName} && docker run --name ${projectName} -p 80:8888 -d ${imageUrl}:${imageTag}"'
+                //sh "docker -H 10.0.0.101:2375 rm -f ${projectName} && docker -H 10.0.0.101:2375 run --name ${projectName} -p 80:8888 -d ${imageUrl}:${imageTag}"
+                //sh "docker -H 10.0.0.102:2375 rm -f ${projectName} && docker -H 10.0.0.102:2375 run --name ${projectName} -p 80:8888 -d ${imageUrl}:${imageTag}"
+            }   
+        }         
+    }
+  post {
+        success {
+            mail to: 'root@wangxiaochun.com',
+            subject: "Status of pipeline: ${currentBuild.fullDisplayName}",
+            body: "${env.BUILD_URL} has result ${currentBuild.result}"
+        }
+        failure{
+            qyWechatNotification failNotify: true, webhookUrl: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=29d3caa7-340e-410d-8599-56e034a82750'
+        }
+   } 
+}

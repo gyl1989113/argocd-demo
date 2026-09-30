@@ -1,0 +1,36 @@
+replicaCount: 3
+image:
+  tag: v1.0
+  pullPolicy: IfNotPresent
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: prod
+
+ingress:
+  enabled: true
+  host: prod.wang.org
+  #tls:
+  #  - secretName: wang-tls-cert
+  #    hosts:
+  #      - prod.wang.org
+
+
+# 生产开启Pod反亲和，分散到不同节点
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app
+              operator: In
+              values:
+                - spring-boot-helloworld
+        topologyKey: "kubernetes.io/hostname"
+

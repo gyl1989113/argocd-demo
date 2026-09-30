@@ -1,0 +1,18 @@
+#FROM adoptopenjdk/openjdk11:alpine-jre
+#FROM openjdk:11.0.16
+FROM registry.cn-beijing.aliyuncs.com/wangxiaochun/maven:3.9.9-eclipse-temurin-8-alpine AS build
+COPY .  /data/
+WORKDIR /data
+RUN sed -i  '/\/mirrors>/i <mirror> \n <id>nexus-aliyun</id> \n  <mirrorOf>*</mirrorOf> \n <name>Nexus aliyun</name> \n <url>http://maven.aliyun.com/nexus/content/groups/public</url> \n </mirror> ' /usr/share/maven/conf/settings.xml 
+RUN  mvn clean package -Dmaven.test.skip=true
+
+#第二阶段构建
+FROM registry.cn-beijing.aliyuncs.com/wangxiaochun/openjdk:8u212-jre-alpine3.9
+LABEL maintainer="wangxiaochun <root@wangxiaochun.com>"
+RUN sed -i 's#dl-cdn.alpinelinux.org#mirrors.aliyun.com#' /etc/apk/repositories && apk update && apk --no-cache add tzdata bash
+ENV PORT=80 TZ=Asia/Shanghai
+
+COPY --from=build /data/target/spring-boot-helloworld-*-SNAPSHOT.jar /app/spring-boot-helloworld.jar
+
+#CMD ["/bin/bash", "-c", "java -jar /app/spring-boot-helloworld.jar --server.port=${PORT}"]
+CMD java -jar /app/spring-boot-helloworld.jar --server.port=$PORT

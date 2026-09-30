@@ -1,0 +1,6 @@
+.git/
+target/
+*.jar
+pom.xml
+Dockerfile
+*.log

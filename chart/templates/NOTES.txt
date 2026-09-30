@@ -1,0 +1,8 @@
+====================安装完成提示====================
+Release Name: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+Pod查看: kubectl get pods -n {{ .Release.Namespace }}
+服务访问: kubectl get svc {{ include "app.fullname" . }} -n {{ .Release.Namespace }}
+{{- if .Values.ingress.enabled }}
+Ingress地址: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}
+{{- end }}

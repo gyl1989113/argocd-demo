@@ -1,0 +1,21 @@
+replicaCount: 1
+image:
+  repository: registry.cn-beijing.aliyuncs.com/wangxiaochun/spring-boot-helloworld
+  pullPolicy: Always
+service:
+  port: 80
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env: []
+
+ingress:
+  className: nginx
+  path: /
+  pathType: Prefix
+
